@@ -1,0 +1,26 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+
+  cloud:
+    vault:
+      enabled: ${VAULT_ENABLED:true}
+      uri: ${VAULT_ADDR:http://localhost:8200}
+      token: ${VAULT_TOKEN:}
+      authentication: TOKEN
+
+rabbitmq:
+  host: ${RABBITMQ_HOST:localhost}
+  port: ${RABBITMQ_PORT:5672}
+  vhost: ${RABBITMQ_VHOST:/}
+
+  vault:
+    enabled: ${VAULT_ENABLED:true}
+    role: ${VAULT_ROLE:rabbitmq-role}
+    backend: ${VAULT_RABBITMQ_PATH:rabbitmq}
+
+logging:
+  level:
+    root: WARN
+    com.shoppingcart.rabbitmq: INFO

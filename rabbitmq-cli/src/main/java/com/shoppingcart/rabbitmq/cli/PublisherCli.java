@@ -3,12 +3,10 @@ package com.shoppingcart.rabbitmq.cli;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shoppingcart.rabbitmq.publisher.Publisher;
 import com.shoppingcart.rabbitmq.publisher.PublishOptions;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.ExitCodeGenerator;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -21,25 +19,24 @@ import java.util.concurrent.Callable;
 /**
  * Command-line publisher tool for sending messages to RabbitMQ.
  * <p>
- * Usage: sc-mq-publisher [options] <event-type> <json-payload>
+ * Usage: java -jar rabbitmq-cli-publisher.jar [options] <event-type> <json-payload>
  */
 @Slf4j
 @SpringBootApplication(scanBasePackages = "com.shoppingcart.rabbitmq")
 @Command(name = "sc-mq-publisher", mixinStandardHelpOptions = true, version = "1.0.0",
         description = "Publishes messages to RabbitMQ")
-@RequiredArgsConstructor
-public class PublisherCli implements Callable<Integer>, CommandLineRunner, ExitCodeGenerator {
+public class PublisherCli implements Callable<Integer> {
 
-    private final Publisher publisher;
-    private final ObjectMapper objectMapper;
+    private Publisher publisher;
+    private ObjectMapper objectMapper;
 
-    @Parameters(index = "0", description = "Event type (used as routing key)")
+    @Parameters(index = "0", description = "Event type (used as routing key)", defaultValue = "test.event")
     private String eventType;
 
-    @Parameters(index = "1", description = "JSON payload")
+    @Parameters(index = "1", description = "JSON payload", defaultValue = "{\"message\":\"hello\"}")
     private String payload;
 
-    @Option(names = {"-e", "--exchange"}, description = "Exchange name", defaultValue = "events")
+    @Option(names = {"-e", "--exchange"}, description = "Exchange name", defaultValue = "cli-events")
     private String exchange;
 
     @Option(names = {"-r", "--routing-key"}, description = "Custom routing key (overrides event-type)")
@@ -51,23 +48,35 @@ public class PublisherCli implements Callable<Integer>, CommandLineRunner, ExitC
     @Option(names = {"--no-confirm"}, description = "Don't wait for publisher confirms")
     private boolean noConfirm;
 
-    @Option(names = {"--json-output"}, description = "Output result as JSON")
+    @Option(names = {"--json"}, description = "Output result as JSON")
     private boolean jsonOutput;
 
-    private int exitCode = 0;
+    @Option(names = {"--quiet"}, description = "Minimal output")
+    private boolean quiet;
 
     public static void main(String[] args) {
-        System.exit(SpringApplication.exit(SpringApplication.run(PublisherCli.class, args)));
-    }
+        // Start Spring context
+        ConfigurableApplicationContext context = SpringApplication.run(PublisherCli.class, args);
 
-    @Override
-    public void run(String... args) throws Exception {
-        exitCode = new CommandLine(this).execute(args);
+        // Get the CLI instance and inject dependencies
+        PublisherCli cli = new PublisherCli();
+        cli.publisher = context.getBean(Publisher.class);
+        cli.objectMapper = context.getBean(ObjectMapper.class);
+
+        // Run picocli
+        int exitCode = new CommandLine(cli).execute(args);
+
+        // Close context and exit
+        context.close();
+        System.exit(exitCode);
     }
 
     @Override
     public Integer call() {
         try {
+            // Declare exchange
+            publisher.declareExchange(exchange, Publisher.ExchangeType.TOPIC, true, false);
+
             // Use custom routing key or event type
             String rk = routingKey != null ? routingKey : eventType;
 
@@ -95,11 +104,10 @@ public class PublisherCli implements Callable<Integer>, CommandLineRunner, ExitC
                 Map<String, Object> result = Map.of(
                         "status", "success",
                         "exchange", exchange,
-                        "routingKey", rk,
-                        "eventType", eventType
+                        "routingKey", rk
                 );
                 System.out.println(objectMapper.writeValueAsString(result));
-            } else {
+            } else if (!quiet) {
                 System.out.printf("Published to exchange='%s', routingKey='%s'%n", exchange, rk);
             }
 
@@ -118,13 +126,11 @@ public class PublisherCli implements Callable<Integer>, CommandLineRunner, ExitC
                 }
             } else {
                 System.err.println("Error: " + e.getMessage());
+                if (!quiet) {
+                    e.printStackTrace();
+                }
             }
             return 1;
         }
-    }
-
-    @Override
-    public int getExitCode() {
-        return exitCode;
     }
 }

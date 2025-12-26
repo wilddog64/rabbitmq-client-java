@@ -43,7 +43,7 @@ sleep 3
 
 echo ""
 echo "Consumer received:"
-grep -E '"msg"' /tmp/consumer-output.txt 2>/dev/null || echo "  (see /tmp/consumer-output.txt for details)"
+grep -E '"(msg|message)"' /tmp/consumer-output.txt 2>/dev/null || echo "  (see /tmp/consumer-output.txt for details)"
 
 # Cleanup
 kill $CONSUMER_PID 2>/dev/null || true

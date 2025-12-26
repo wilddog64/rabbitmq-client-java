@@ -3,16 +3,14 @@ package com.shoppingcart.rabbitmq.cli;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shoppingcart.rabbitmq.consumer.Consumer;
 import com.shoppingcart.rabbitmq.consumer.ConsumeOptions;
-import lombok.RequiredArgsConstructor;
+import com.shoppingcart.rabbitmq.publisher.Publisher;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.ExitCodeGenerator;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
-import picocli.CommandLine.Parameters;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -23,20 +21,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Command-line consumer tool for receiving messages from RabbitMQ.
  * <p>
- * Usage: sc-mq-consumer [options] <queue-name>
+ * Usage: java -jar rabbitmq-cli-consumer.jar [options]
  */
 @Slf4j
 @SpringBootApplication(scanBasePackages = "com.shoppingcart.rabbitmq")
 @Command(name = "sc-mq-consumer", mixinStandardHelpOptions = true, version = "1.0.0",
         description = "Consumes messages from RabbitMQ")
-@RequiredArgsConstructor
-public class ConsumerCli implements Callable<Integer>, CommandLineRunner, ExitCodeGenerator {
+public class ConsumerCli implements Callable<Integer> {
 
-    private final Consumer consumer;
-    private final ObjectMapper objectMapper;
+    private static final String DEFAULT_EXCHANGE = "cli-events";
+    private static final String DEFAULT_QUEUE = "cli-messages";
 
-    @Parameters(index = "0", description = "Queue name to consume from")
+    private Consumer consumer;
+    private Publisher publisher;
+    private ObjectMapper objectMapper;
+
+    @Option(names = {"-q", "--queue"}, description = "Queue name", defaultValue = DEFAULT_QUEUE)
     private String queueName;
+
+    @Option(names = {"-e", "--exchange"}, description = "Exchange to bind to", defaultValue = DEFAULT_EXCHANGE)
+    private String exchange;
+
+    @Option(names = {"-r", "--routing-key"}, description = "Routing key pattern for binding", defaultValue = "#")
+    private String routingKeyPattern;
 
     @Option(names = {"-n", "--count"}, description = "Number of messages to consume (0 = unlimited)", defaultValue = "0")
     private int count;
@@ -47,31 +54,51 @@ public class ConsumerCli implements Callable<Integer>, CommandLineRunner, ExitCo
     @Option(names = {"--prefetch"}, description = "Prefetch count", defaultValue = "10")
     private int prefetch;
 
-    @Option(names = {"--json-output"}, description = "Output messages as JSON")
+    @Option(names = {"--json"}, description = "Output messages as JSON")
     private boolean jsonOutput;
 
     @Option(names = {"--quiet"}, description = "Only output message bodies")
     private boolean quiet;
 
-    private int exitCode = 0;
+    @Option(names = {"--no-setup"}, description = "Skip exchange/queue setup")
+    private boolean noSetup;
+
     private final CountDownLatch shutdownLatch = new CountDownLatch(1);
     private final AtomicInteger messagesReceived = new AtomicInteger(0);
 
     public static void main(String[] args) {
-        System.exit(SpringApplication.exit(SpringApplication.run(ConsumerCli.class, args)));
-    }
+        // Start Spring context
+        ConfigurableApplicationContext context = SpringApplication.run(ConsumerCli.class, args);
 
-    @Override
-    public void run(String... args) throws Exception {
-        exitCode = new CommandLine(this).execute(args);
+        // Get the CLI instance and inject dependencies
+        ConsumerCli cli = new ConsumerCli();
+        cli.consumer = context.getBean(Consumer.class);
+        cli.publisher = context.getBean(Publisher.class);
+        cli.objectMapper = context.getBean(ObjectMapper.class);
+
+        // Run picocli
+        int exitCode = new CommandLine(cli).execute(args);
+
+        // Close context and exit
+        context.close();
+        System.exit(exitCode);
     }
 
     @Override
     public Integer call() {
         try {
+            // Setup infrastructure unless --no-setup
+            if (!noSetup) {
+                setupInfrastructure();
+            }
+
             // Register shutdown hook
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                log.info("Shutting down consumer...");
+                if (!quiet) {
+                    System.out.println();
+                    System.out.println("Shutting down consumer...");
+                    System.out.printf("Total messages received: %d%n", messagesReceived.get());
+                }
                 consumer.stopAll();
                 shutdownLatch.countDown();
             }));
@@ -81,6 +108,7 @@ public class ConsumerCli implements Callable<Integer>, CommandLineRunner, ExitCo
                     .queue(queueName)
                     .autoAck(autoAck)
                     .prefetchCount(prefetch)
+                    .requeueOnFailure(true)
                     .build();
 
             if (!quiet) {
@@ -91,40 +119,36 @@ public class ConsumerCli implements Callable<Integer>, CommandLineRunner, ExitCo
             consumer.consume(options, message -> {
                 int received = messagesReceived.incrementAndGet();
                 String body = new String(message.getBody(), StandardCharsets.UTF_8);
+                String routingKey = message.getMessageProperties().getReceivedRoutingKey();
 
                 if (jsonOutput) {
                     Map<String, Object> output = Map.of(
-                            "messageId", message.getMessageProperties().getMessageId(),
-                            "exchange", message.getMessageProperties().getReceivedExchange(),
-                            "routingKey", message.getMessageProperties().getReceivedRoutingKey(),
-                            "timestamp", message.getMessageProperties().getTimestamp(),
+                            "count", received,
+                            "exchange", message.getMessageProperties().getReceivedExchange() != null
+                                    ? message.getMessageProperties().getReceivedExchange() : "",
+                            "routingKey", routingKey != null ? routingKey : "",
                             "body", body
                     );
                     System.out.println(objectMapper.writeValueAsString(output));
                 } else if (quiet) {
                     System.out.println(body);
                 } else {
-                    System.out.printf("[%d] Exchange: %s, RoutingKey: %s%n",
-                            received,
-                            message.getMessageProperties().getReceivedExchange(),
-                            message.getMessageProperties().getReceivedRoutingKey());
+                    System.out.printf("[#%d] %s%n", received, routingKey != null ? routingKey : "(no routing key)");
                     System.out.println(body);
-                    System.out.println("---");
+                    System.out.println();
                 }
 
                 // Check if we've received enough messages
                 if (count > 0 && received >= count) {
-                    log.info("Received {} messages, stopping", received);
+                    if (!quiet) {
+                        System.out.printf("Received %d messages, stopping%n", received);
+                    }
                     shutdownLatch.countDown();
                 }
             });
 
             // Wait for shutdown
             shutdownLatch.await();
-
-            if (!quiet) {
-                System.out.printf("Received %d messages%n", messagesReceived.get());
-            }
 
             return 0;
 
@@ -141,13 +165,36 @@ public class ConsumerCli implements Callable<Integer>, CommandLineRunner, ExitCo
                 }
             } else {
                 System.err.println("Error: " + e.getMessage());
+                if (!quiet) {
+                    e.printStackTrace();
+                }
             }
             return 1;
         }
     }
 
-    @Override
-    public int getExitCode() {
-        return exitCode;
+    private void setupInfrastructure() {
+        if (!quiet) {
+            System.out.println("Setting up RabbitMQ infrastructure...");
+        }
+
+        // Declare exchange
+        publisher.declareExchange(exchange, Publisher.ExchangeType.TOPIC, true, false);
+        if (!quiet) {
+            System.out.printf("  Declared exchange: %s%n", exchange);
+        }
+
+        // Declare queue
+        consumer.declareQueue(queueName, ConsumeOptions.QueueOptions.defaults());
+        if (!quiet) {
+            System.out.printf("  Declared queue: %s%n", queueName);
+        }
+
+        // Bind queue to exchange
+        consumer.bindQueue(queueName, exchange, routingKeyPattern);
+        if (!quiet) {
+            System.out.printf("  Bound queue to exchange with pattern: %s%n", routingKeyPattern);
+            System.out.println();
+        }
     }
 }

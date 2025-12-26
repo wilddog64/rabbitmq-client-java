@@ -130,33 +130,27 @@ public class VaultCredentialManager {
     private void renewCredentials() {
         lock.writeLock().lock();
         try {
-            if (credentials == null || credentials.getLeaseId() == null) {
+            if (credentials == null || credentials.leaseId() == null) {
                 log.warn("No credentials to renew, fetching new ones");
                 fetchCredentials();
                 return;
             }
 
-            log.info("Renewing Vault lease for RabbitMQ credentials, leaseId={}", credentials.leaseId());
+            log.info("Credentials need renewal, fetching new credentials");
 
+            // Instead of renewing the lease, we fetch new credentials
+            // This is simpler and more robust as it doesn't depend on Vault lease renewal API
             try {
-                VaultResponse response = vaultTemplate.opsForLease().renew(credentials.leaseId());
-
-                if (response != null) {
-                    Duration newTtl = Duration.ofSeconds(response.getLeaseDuration());
-                    credentials = VaultCredentials.of(
-                            credentials.username(),
-                            credentials.password(),
-                            newTtl,
-                            credentials.leaseId()
-                    );
-                    log.info("Successfully renewed credentials lease, new ttl={}", newTtl);
-                } else {
-                    log.warn("Lease renewal returned null, fetching new credentials");
+                // Fetch new credentials
+                lock.writeLock().unlock();
+                try {
                     fetchCredentials();
+                } finally {
+                    lock.writeLock().lock();
                 }
+                log.info("Successfully fetched new credentials");
             } catch (Exception e) {
-                log.warn("Failed to renew lease, fetching new credentials", e);
-                fetchCredentials();
+                log.error("Failed to fetch new credentials during renewal", e);
             }
         } finally {
             lock.writeLock().unlock();
@@ -174,16 +168,12 @@ public class VaultCredentialManager {
                 return;
             }
 
-            log.info("Revoking Vault lease for RabbitMQ credentials, leaseId={}", credentials.leaseId());
+            log.info("Clearing RabbitMQ credentials, leaseId={}", credentials.leaseId());
 
-            try {
-                vaultTemplate.opsForLease().revoke(credentials.leaseId());
-                log.info("Successfully revoked credentials lease");
-            } catch (Exception e) {
-                log.warn("Failed to revoke lease", e);
-            } finally {
-                credentials = null;
-            }
+            // Note: Vault leases will expire automatically based on their TTL
+            // We simply clear the local credentials here
+            credentials = null;
+            log.info("Successfully cleared credentials");
         } finally {
             lock.writeLock().unlock();
         }

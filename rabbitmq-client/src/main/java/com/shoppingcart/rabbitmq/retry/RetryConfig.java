@@ -27,7 +27,6 @@ public class RetryConfig {
     private RetryRegistry createRegistry() {
         io.github.resilience4j.retry.RetryConfig config = io.github.resilience4j.retry.RetryConfig.custom()
                 .maxAttempts(retryProperties.getMaxAttempts())
-                .waitDuration(retryProperties.getInitialInterval())
                 .intervalFunction(attempt -> {
                     // Exponential backoff with jitter
                     double delay = retryProperties.getInitialInterval().toMillis() *

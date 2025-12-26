@@ -119,7 +119,8 @@ public class CircuitBreakerConfig {
         }
 
         CircuitBreaker cb = getCircuitBreaker(name);
-        if (cb.getState() == CircuitBreaker.State.OPEN) {
+        CircuitBreaker.State state = cb.getState();
+        if (state == CircuitBreaker.State.OPEN || state == CircuitBreaker.State.FORCED_OPEN) {
             throw new CircuitBreakerOpenException(name, cbProperties.getTimeout());
         }
     }

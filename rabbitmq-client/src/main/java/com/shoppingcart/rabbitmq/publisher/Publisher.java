@@ -144,27 +144,25 @@ public class Publisher {
      * Creates an AMQP message with the given body and options.
      */
     private Message createMessage(byte[] body, PublishOptions options) {
-        MessagePropertiesBuilder propsBuilder = MessagePropertiesBuilder.newInstance()
-                .setContentType(options.getContentType())
-                .setContentEncoding(options.getContentEncoding())
-                .setDeliveryMode(options.getDeliveryMode())
-                .setMessageId(UUID.randomUUID().toString())
-                .setTimestamp(new java.util.Date());
+        MessageProperties props = new MessageProperties();
+        props.setContentType(options.getContentType());
+        props.setContentEncoding(options.getContentEncoding());
+        props.setDeliveryMode(options.getDeliveryMode());
+        props.setMessageId(UUID.randomUUID().toString());
+        props.setTimestamp(new java.util.Date());
 
         if (options.getPriority() != null) {
-            propsBuilder.setPriority(options.getPriority());
+            props.setPriority(options.getPriority());
         }
         if (options.getExpiration() != null) {
-            propsBuilder.setExpiration(options.getExpiration());
+            props.setExpiration(options.getExpiration());
         }
         if (options.getCorrelationId() != null) {
-            propsBuilder.setCorrelationId(options.getCorrelationId());
+            props.setCorrelationId(options.getCorrelationId());
         }
         if (options.getReplyTo() != null) {
-            propsBuilder.setReplyTo(options.getReplyTo());
+            props.setReplyTo(options.getReplyTo());
         }
-
-        MessageProperties props = propsBuilder.build();
 
         // Add custom headers
         options.getHeaders().forEach(props::setHeader);

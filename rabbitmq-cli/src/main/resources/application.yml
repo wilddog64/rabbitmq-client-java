@@ -5,20 +5,20 @@ spring:
 
   cloud:
     vault:
-      enabled: ${VAULT_ENABLED:true}
-      uri: ${VAULT_ADDR:http://localhost:8200}
-      token: ${VAULT_TOKEN:}
-      authentication: TOKEN
+      enabled: ${VAULT_ENABLED:false}
 
 rabbitmq:
   host: ${RABBITMQ_HOST:localhost}
-  port: ${RABBITMQ_PORT:5672}
+  port: ${RABBITMQ_PORT:30672}
   vhost: ${RABBITMQ_VHOST:/}
+  username: ${RABBITMQ_USERNAME:demo}
+  password: ${RABBITMQ_PASSWORD:demo}
 
   vault:
-    enabled: ${VAULT_ENABLED:true}
-    role: ${VAULT_ROLE:rabbitmq-role}
-    backend: ${VAULT_RABBITMQ_PATH:rabbitmq}
+    enabled: ${VAULT_ENABLED:false}
+
+  circuit-breaker:
+    enabled: false
 
 logging:
   level:

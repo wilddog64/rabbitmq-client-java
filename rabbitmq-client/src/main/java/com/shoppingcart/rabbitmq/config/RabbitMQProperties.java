@@ -44,6 +44,16 @@ public class RabbitMQProperties {
     private boolean useTls = false;
 
     /**
+     * Static username (used when Vault is disabled).
+     */
+    private String username = "guest";
+
+    /**
+     * Static password (used when Vault is disabled).
+     */
+    private String password = "guest";
+
+    /**
      * Connection pool settings.
      */
     private Pool pool = new Pool();

@@ -52,9 +52,16 @@ public class RabbitMQClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     @ConditionalOnBean(VaultCredentialManager.class)
-    public ConnectionManager connectionManager(RabbitMQProperties properties,
-                                                VaultCredentialManager vaultCredentialManager) {
+    public ConnectionManager connectionManagerWithVault(RabbitMQProperties properties,
+                                                         VaultCredentialManager vaultCredentialManager) {
         return new ConnectionManager(properties, vaultCredentialManager);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(name = "rabbitmq.vault.enabled", havingValue = "false")
+    public ConnectionManager connectionManagerWithoutVault(RabbitMQProperties properties) {
+        return new ConnectionManager(properties);
     }
 
     @Bean
@@ -62,6 +69,13 @@ public class RabbitMQClientAutoConfiguration {
     @ConditionalOnBean(MeterRegistry.class)
     public RabbitMQMetrics rabbitMQMetrics(MeterRegistry meterRegistry) {
         return new RabbitMQMetrics(meterRegistry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RabbitMQMetrics noOpRabbitMQMetrics() {
+        // Create a no-op metrics instance with SimpleMeterRegistry when no registry is configured
+        return new RabbitMQMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry());
     }
 
     @Bean

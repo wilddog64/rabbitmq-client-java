@@ -16,7 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>
  * This component handles:
  * - Creating and configuring connection factories
- * - Integrating with Vault for dynamic credentials
+ * - Integrating with Vault for dynamic credentials (when enabled)
+ * - Using static credentials (when Vault is disabled)
  * - Connection event handling
  * - Graceful shutdown
  */
@@ -32,6 +33,14 @@ public class ConnectionManager {
     public ConnectionManager(RabbitMQProperties properties, VaultCredentialManager vaultCredentialManager) {
         this.properties = properties;
         this.vaultCredentialManager = vaultCredentialManager;
+    }
+
+    public ConnectionManager(RabbitMQProperties properties) {
+        this(properties, null);
+    }
+
+    private boolean isVaultEnabled() {
+        return properties.getVault().isEnabled() && vaultCredentialManager != null;
     }
 
     /**
@@ -51,23 +60,37 @@ public class ConnectionManager {
     }
 
     /**
-     * Initializes the connection factory with Vault credentials.
+     * Initializes the connection factory with credentials.
+     * Uses Vault credentials if enabled, otherwise uses static credentials from properties.
      */
     private void initialize() {
-        log.info("Initializing RabbitMQ connection factory, host={}:{}, vhost={}",
-                properties.getHost(), properties.getPort(), properties.getVhost());
+        log.info("Initializing RabbitMQ connection factory, host={}:{}, vhost={}, vault={}",
+                properties.getHost(), properties.getPort(), properties.getVhost(), isVaultEnabled());
 
         try {
-            // Get credentials from Vault
-            VaultCredentials credentials = vaultCredentialManager.getCredentials();
+            String username;
+            String password;
+
+            if (isVaultEnabled()) {
+                // Get credentials from Vault
+                VaultCredentials credentials = vaultCredentialManager.getCredentials();
+                username = credentials.username();
+                password = credentials.password();
+                log.info("Using Vault credentials for RabbitMQ connection");
+            } else {
+                // Use static credentials from properties
+                username = properties.getUsername();
+                password = properties.getPassword();
+                log.info("Using static credentials for RabbitMQ connection");
+            }
 
             // Create connection factory
             connectionFactory = new CachingConnectionFactory();
             connectionFactory.setHost(properties.getHost());
             connectionFactory.setPort(properties.getPort());
             connectionFactory.setVirtualHost(properties.getVhost());
-            connectionFactory.setUsername(credentials.username());
-            connectionFactory.setPassword(credentials.password());
+            connectionFactory.setUsername(username);
+            connectionFactory.setPassword(password);
 
             // Configure connection settings
             connectionFactory.setRequestedHeartBeat(
@@ -105,8 +128,14 @@ public class ConnectionManager {
 
     /**
      * Refreshes the connection with new credentials from Vault.
+     * No-op if Vault is disabled (static credentials don't need refresh).
      */
     public void refreshCredentials() {
+        if (!isVaultEnabled()) {
+            log.debug("Credential refresh skipped - Vault is disabled");
+            return;
+        }
+
         log.info("Refreshing RabbitMQ connection credentials");
 
         try {
@@ -164,8 +193,8 @@ public class ConnectionManager {
             }
         }
 
-        // Revoke Vault credentials
-        if (vaultCredentialManager != null) {
+        // Revoke Vault credentials (only if Vault is enabled)
+        if (isVaultEnabled()) {
             vaultCredentialManager.revokeCredentials();
         }
 

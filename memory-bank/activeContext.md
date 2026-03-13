@@ -1,4 +1,19 @@
-# Active Context: rabbitmq-client-java
+## CI Status (as of 2026-03-13)
+
+**Branch:** `fix/ci-stabilization` — PR #1 open
+
+| Job | Status |
+|---|---|
+| Build and Test | ✅ pass |
+| Publish to GitHub Packages | ✅ pass |
+
+**Package `com.shoppingcart:rabbitmq-client:1.0.0-SNAPSHOT` is published to GitHub Packages.**
+PR #1 ready to merge.
+
+Fix applied: added `publish` job to `java-ci.yml` — runs on `fix/ci-stabilization` and `main`
+pushes. Needs only `build` (not `integration-test`) to proceed.
+
+---# Active Context: rabbitmq-client-java
 
 ## Current State
 

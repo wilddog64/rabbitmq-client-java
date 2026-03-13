@@ -2,7 +2,7 @@ name: Java CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, fix/ci-stabilization]
   pull_request:
     branches: [main]
   release:

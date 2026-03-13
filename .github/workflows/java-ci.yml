@@ -54,6 +54,31 @@ jobs:
             rabbitmq-client/target/*.jar
             rabbitmq-cli/target/*.jar
 
+  publish:
+    name: Publish to GitHub Packages
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Publish to GitHub Packages
+        run: mvn -B deploy -DskipTests -s .github/maven-settings.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   integration-test:
     name: Integration Tests
     runs-on: ubuntu-latest

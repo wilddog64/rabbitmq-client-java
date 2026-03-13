@@ -12,6 +12,14 @@
     <name>RabbitMQ Client Library</name>
     <description>Production-ready RabbitMQ client with Vault integration for the Shopping Cart platform</description>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/wilddog64/rabbitmq-client-java</url>
+        </repository>
+    </distributionManagement>
+
     <modules>
         <module>rabbitmq-client</module>
         <module>rabbitmq-cli</module>

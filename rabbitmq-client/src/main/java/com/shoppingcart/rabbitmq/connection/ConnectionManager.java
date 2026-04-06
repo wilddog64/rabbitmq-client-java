@@ -209,11 +209,17 @@ public class ConnectionManager {
             return new ConnectionStats(0, 0, 0, false);
         }
 
-        var cacheProperties = connectionFactory.getCacheProperties();
-        int channelCacheSize = Integer.parseInt(
-                cacheProperties.getOrDefault("channelCacheSize", "0").toString());
-        int idleChannels = Integer.parseInt(
-                cacheProperties.getOrDefault("idleChannelsNotTx", "0").toString());
+        int channelCacheSize = 0;
+        int idleChannels = 0;
+        try {
+            var cacheProperties = connectionFactory.getCacheProperties();
+            channelCacheSize = Integer.parseInt(
+                    cacheProperties.getOrDefault("channelCacheSize", "0").toString());
+            idleChannels = Integer.parseInt(
+                    cacheProperties.getOrDefault("idleChannelsNotTx", "0").toString());
+        } catch (Exception ignored) {
+            // getCacheProperties() throws NPE before any channel is opened (Spring AMQP 3.1.0)
+        }
 
         return new ConnectionStats(
                 channelCacheSize,

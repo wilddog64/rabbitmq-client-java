@@ -217,8 +217,9 @@ public class ConnectionManager {
                     cacheProperties.getOrDefault("channelCacheSize", "0").toString());
             idleChannels = Integer.parseInt(
                     cacheProperties.getOrDefault("idleChannelsNotTx", "0").toString());
-        } catch (Exception ignored) {
+        } catch (NullPointerException e) {
             // getCacheProperties() throws NPE before any channel is opened (Spring AMQP 3.1.0)
+            log.debug("Unable to read RabbitMQ cache properties before any channel is opened", e);
         }
 
         return new ConnectionStats(

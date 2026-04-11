@@ -132,11 +132,17 @@ jobs:
           VAULT_ADDR: http://localhost:8200
           VAULT_TOKEN: root
         run: |
-          # Enable RabbitMQ secrets engine (ignore 400 if already mounted)
-          curl -sf -X POST \
+          # Enable RabbitMQ secrets engine (400 = already mounted, anything else fails the step)
+          mount_status=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
             -H "X-Vault-Token: ${VAULT_TOKEN}" \
             -d '{"type":"rabbitmq"}' \
-            "${VAULT_ADDR}/v1/sys/mounts/rabbitmq" || true
+            "${VAULT_ADDR}/v1/sys/mounts/rabbitmq")
+          if [ "${mount_status}" = "400" ]; then
+            echo "RabbitMQ secrets engine already mounted; continuing."
+          elif [ "${mount_status}" -lt 200 ] || [ "${mount_status}" -ge 300 ]; then
+            echo "Failed to mount RabbitMQ secrets engine. HTTP status: ${mount_status}" >&2
+            exit 1
+          fi
 
           # Configure RabbitMQ connection
           curl -sf -X POST \

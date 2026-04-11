@@ -2,7 +2,7 @@ name: Java CI
 
 on:
   push:
-    branches: [main, develop, fix/ci-stabilization]
+    branches: [main, develop, fix/ci-stabilization, fix/rabbitmq-mgmt-api-wait]
   pull_request:
     branches: [main]
   release:
@@ -85,7 +85,7 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/fix/rabbitmq-mgmt-api-wait')
 
     services:
       rabbitmq:
@@ -122,8 +122,10 @@ jobs:
 
       - name: Wait for services
         run: |
-          echo "Waiting for RabbitMQ..."
+          echo "Waiting for RabbitMQ AMQP..."
           timeout 60 bash -c 'until nc -z localhost 5672; do sleep 1; done'
+          echo "Waiting for RabbitMQ management API..."
+          timeout 60 bash -c 'until curl -sf http://localhost:15672/api/overview -u guest:guest > /dev/null 2>&1; do sleep 1; done'
           echo "Waiting for Vault..."
           timeout 60 bash -c 'until nc -z localhost 8200; do sleep 1; done'
 

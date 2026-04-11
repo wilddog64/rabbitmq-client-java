@@ -149,7 +149,7 @@ jobs:
           # Configure RabbitMQ connection
           curl -sf -X POST \
             -H "X-Vault-Token: ${VAULT_TOKEN}" \
-            -d '{"connection_uri":"http://localhost:15672","username":"guest","password":"guest"}' \
+            -d '{"connection_uri":"http://rabbitmq:15672","username":"guest","password":"guest"}' \
             "${VAULT_ADDR}/v1/rabbitmq/config/connection"
 
           # Create a role

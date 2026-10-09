@@ -11,6 +11,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   dependency removed; `Configure Vault` step now configures the Vault service container via its
   HTTP API using `curl`. Vault service image pinned from `latest` to `1.15.6`.
 
+## [1.1.0]
+
+### Changed
+- Upgraded the library to Spring Boot 4.0 and Spring Cloud 2025.1.
+- Updated health indicator APIs and Testcontainers dependencies for Spring Boot 4 and Testcontainers 2.
+
 ## [1.0.1] - 2026-04-11
 
 ### Fixed

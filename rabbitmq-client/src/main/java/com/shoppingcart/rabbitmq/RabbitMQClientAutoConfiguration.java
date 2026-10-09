@@ -13,7 +13,7 @@ import com.shoppingcart.rabbitmq.publisher.Publisher;
 import com.shoppingcart.rabbitmq.retry.RetryConfig;
 import com.shoppingcart.rabbitmq.vault.VaultCredentialManager;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;

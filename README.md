@@ -22,6 +22,11 @@ Production-ready RabbitMQ client library with HashiCorp Vault integration for dy
 - RabbitMQ 3.12+
 - HashiCorp Vault (optional, for dynamic credentials)
 
+### Spring Boot Compatibility
+
+Version 1.1.x requires Spring Boot 4.0 and Spring Cloud 2025.1. Consumers using Spring Boot 3
+(including order) should remain on the 1.0.x line.
+
 ## Quick Start
 
 ### Add Dependency

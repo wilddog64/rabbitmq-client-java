@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.shoppingcart</groupId>
         <artifactId>rabbitmq-client-parent</artifactId>
-        <version>1.0.2</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>rabbitmq-client</artifactId>
@@ -23,6 +23,12 @@
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
+        <!-- Jackson 2 wire format (kept for message compatibility) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- Spring Cloud Vault -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -32,7 +38,8 @@
         <!-- Resilience4j -->
         <dependency>
             <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-spring-boot3</artifactId>
+            <artifactId>resilience4j-spring-boot4</artifactId>
+            <version>${resilience4j.version}</version>
         </dependency>
         <dependency>
             <groupId>io.github.resilience4j</groupId>
@@ -88,17 +95,17 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>rabbitmq</artifactId>
+            <artifactId>testcontainers-rabbitmq</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>vault</artifactId>
+            <artifactId>testcontainers-vault</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

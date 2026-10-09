@@ -7,7 +7,7 @@
     <parent>
         <groupId>com.shoppingcart</groupId>
         <artifactId>rabbitmq-client-parent</artifactId>
-        <version>1.0.2</version>
+        <version>1.1.0</version>
     </parent>
 
     <artifactId>rabbitmq-cli</artifactId>
@@ -45,7 +45,7 @@
         <dependency>
             <groupId>info.picocli</groupId>
             <artifactId>picocli-spring-boot-starter</artifactId>
-            <version>4.7.5</version>
+            <version>4.7.7</version>
         </dependency>
 
         <!-- Lombok -->

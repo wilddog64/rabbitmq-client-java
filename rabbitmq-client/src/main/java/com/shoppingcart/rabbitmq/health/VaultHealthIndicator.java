@@ -4,8 +4,8 @@ import com.shoppingcart.rabbitmq.vault.VaultCredentialManager;
 import com.shoppingcart.rabbitmq.vault.VaultCredentials;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 
 import java.time.Duration;
 
